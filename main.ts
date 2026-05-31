@@ -10,12 +10,12 @@ const sendStatusEl = document.getElementById("atsendstatus")!
 
 let at: any = null
 let nexus: any = null
-let selectedSynth: SynthType = "heisenberg"
+let selectedSynth: SynthType = "tonematrix"
 
 const setAtStatus = (s: string, cls = "") => { atStatusEl.textContent = s; atStatusEl.className = cls }
 const setSendStatus = (s: string, cls = "") => { sendStatusEl.textContent = s; sendStatusEl.className = cls }
 
-console.log("TONEFALL → Audiotool — build 0.8.1")
+console.log("TONEFALL → Audiotool — build 0.9.2")
 
 function wireSendPanel() {
   // synth selector

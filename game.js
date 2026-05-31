@@ -220,14 +220,6 @@ export function initGame() {
     fb.linearRampToValueAtTime(Math.min(0.85, fxX*0.82+0.4), t+0.5);
     fb.linearRampToValueAtTime(fxX*0.82, t+4.0);
   }
-  // GATE / STUTTER (g): chop the master in 16th-note steps for ~1 bar
-  function gestureGate(){ ensureAudio(); if(!AC) return;
-    const t=AC.currentTime, step=Math.max(0.05,(stepMs/1000)), steps=16, mg=master.gain, lvl=0.62;
-    mg.cancelScheduledValues(t);
-    for(let i=0;i<steps;i++){ const tt=t+i*step;
-      mg.setValueAtTime(lvl, tt); mg.setValueAtTime(0.0, tt+step*0.5); }
-    mg.setValueAtTime(lvl, t+steps*step);
-  }
   // TAPE-STOP (y): power-down brake — muffle + dip, then snap back
   function gestureTapeStop(){ ensureAudio(); if(!AC) return;
     const t=AC.currentTime, f=sweepLP.frequency, mg=master.gain, lvl=0.62;
@@ -261,7 +253,7 @@ export function initGame() {
     q:['↯ long delay',gestureDub],  h:['↯ long delay',gestureDub],
     e:['wash',gestureWash],
     f:['transpose',gestureTranspose], v:['chord stab',gestureStab],
-    g:['gate',gestureGate], y:['tape-stop',gestureTapeStop],
+    y:['tape-stop',gestureTapeStop],
   };
   function ensureAudio(){ if(!AC) initAudio(); if(AC && AC.state==="suspended") AC.resume(); }
   function note(freq, vel, t0){
@@ -838,6 +830,12 @@ export function initGame() {
     b.addEventListener("click", fire);
     b.addEventListener("touchstart", e=>{ e.preventDefault(); fire(); }, {passive:false});
   });
+  (function(){
+    const BG=[["bg-morph","MORPH"],["bg-original","ORIGINAL"],["bg-pixel","PIXEL"]];
+    let bi=0; const btn=document.getElementById("bgToggle");
+    function apply(){ bloom.className=BG[bi][0]; if(btn) btn.textContent="BG · "+BG[bi][1]; }
+    if(btn){ btn.addEventListener("click", ()=>{ bi=(bi+1)%BG.length; apply(); }); apply(); }
+  })();
   document.getElementById("speedPrev").onclick=()=>{ ensureAudio(); setSpeed(speedIdx-1); };
   document.getElementById("speedNext").onclick=()=>{ ensureAudio(); setSpeed(speedIdx+1); };
 

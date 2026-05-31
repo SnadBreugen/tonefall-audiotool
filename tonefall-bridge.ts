@@ -6,7 +6,7 @@
 //    then insertSample with the finished SampleMeta (auto-creates audio device+track).
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type SynthType = "heisenberg" | "pulverisateur" | "space" | "bassline"
+export type SynthType = "tonematrix" | "pulverisateur" | "heisenberg"
 
 export type NoteCell = {
   pitch: number
