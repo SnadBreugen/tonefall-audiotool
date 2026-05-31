@@ -15,7 +15,7 @@ let selectedSynth: SynthType = "tonematrix"
 const setAtStatus = (s: string, cls = "") => { atStatusEl.textContent = s; atStatusEl.className = cls }
 const setSendStatus = (s: string, cls = "") => { sendStatusEl.textContent = s; sendStatusEl.className = cls }
 
-console.log("TONEFALL → Audiotool — build 0.9.2")
+console.log("TONEFALL → Audiotool — build 0.9.5")
 
 function wireSendPanel() {
   // synth selector

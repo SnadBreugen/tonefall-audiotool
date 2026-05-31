@@ -25,6 +25,7 @@ export function initGame() {
   const bloom = document.getElementById("bloom");
   const bctx = bloom.getContext("2d");
   bloom.width = 240; bloom.height = 240;
+  let mono = false;
   let CELL = 38, DPR = 1;
 
   function fit(){
@@ -479,6 +480,7 @@ export function initGame() {
     const [px,py,w,h]=cellRect(x,y);
     const pad = Math.max(2, CELL*0.10);
     const lit = opts.lit||0;
+    if(mono) color = "#eef0ee";
     ctx.save();
     ctx.globalAlpha = opts.alpha ?? 1;
     ctx.fillStyle = color;
@@ -499,20 +501,22 @@ export function initGame() {
     ctx.save();
     for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
       const [cx,cy]=cellRect(x,y);
-      ctx.fillStyle = (x+y)%2 ? "rgba(255,178,40,.055)":"rgba(255,178,40,.095)";
+      ctx.fillStyle = mono
+        ? ((x+y)%2 ? "rgba(255,255,255,.05)":"rgba(255,255,255,.09)")
+        : ((x+y)%2 ? "rgba(255,178,40,.055)":"rgba(255,178,40,.095)");
       const pad=Math.max(2,CELL*0.10);
       roundRect(ctx, cx+pad, cy+pad, CELL-pad*2, CELL-pad*2, (CELL-pad*2)*0.22);
       ctx.fill();
     }
     ctx.restore();
     if(running){
-      const gx = markCol*CELL, r=255, g=178, b=40;
+      const gx = markCol*CELL, r=mono?235:255, g=mono?235:178, b=mono?235:40;
       const grad = ctx.createLinearGradient(gx,0,gx+CELL,0);
       grad.addColorStop(0,`rgba(${r},${g},${b},0)`);
       grad.addColorStop(.5,`rgba(${r},${g},${b},.20)`);
       grad.addColorStop(1,`rgba(${r},${g},${b},0)`);
       ctx.fillStyle=grad; ctx.fillRect(gx,0,CELL,px);
-      ctx.fillStyle=`rgba(255,210,120,.7)`;
+      ctx.fillStyle = mono ? `rgba(255,255,255,.8)` : `rgba(255,210,120,.7)`;
       ctx.fillRect(gx+CELL-2,0,2,px);
     }
     for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
@@ -523,7 +527,7 @@ export function initGame() {
       ctx.save(); ctx.globalAlpha=.18;
       for(let i=0;i<cur.m.length;i++)for(let j=0;j<cur.m[i].length;j++){
         if(cur.m[i][j]){ const [pxx,pyy,w,h]=cellRect(cur.x+j,gy+i); const pad=Math.max(2,CELL*0.10);
-          ctx.strokeStyle=COLORS[cur.key]; ctx.lineWidth=1.5;
+          ctx.strokeStyle=mono?"#ffffff":COLORS[cur.key]; ctx.lineWidth=1.5;
           roundRect(ctx,pxx+pad,pyy+pad,w-pad*2,h-pad*2,(CELL-pad*2)*0.22); ctx.stroke(); }
       }
       ctx.restore();
@@ -536,7 +540,7 @@ export function initGame() {
     ripples.forEach(rp=>{
       const [cx,cy]=cellRect(rp.x,rp.y);
       ctx.save();
-      ctx.globalAlpha=rp.a*0.55; ctx.strokeStyle="#ffce7a"; ctx.lineWidth=2;
+      ctx.globalAlpha=rp.a*0.55; ctx.strokeStyle=mono?"#ffffff":"#ffce7a"; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(cx+CELL/2, cy+CELL/2, rp.r, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     });
@@ -549,7 +553,7 @@ export function initGame() {
   function drawNext(){
     nctx.clearRect(0,0,120,120);
     if(!nextPiece) return;
-    const m=nextPiece.m, n=m.length, c=COLORS[nextPiece.key], cs=24;
+    const m=nextPiece.m, n=m.length, c=mono?"#eef0ee":COLORS[nextPiece.key], cs=24;
     const offx=(120-n*cs)/2, offy=(120-n*cs)/2;
     for(let i=0;i<n;i++)for(let j=0;j<n;j++){ if(!m[i][j])continue;
       nctx.save(); nctx.shadowColor=c; nctx.shadowBlur=10; nctx.fillStyle=c;
@@ -806,9 +810,9 @@ export function initGame() {
   }
   function setOwnMode(on){
     ownMode=on;
-    document.getElementById('chordSel').style.display = on?'none':'';
-    document.getElementById('keySel').style.display   = on?'none':'';
-    document.getElementById('kbwrap').style.display   = on?'':'none';
+    document.getElementById('chordSel').style.visibility = on?'hidden':'visible';
+    document.getElementById('keySel').style.visibility   = on?'hidden':'visible';
+    document.getElementById('kbwrap').style.visibility   = on?'visible':'hidden';
     document.querySelectorAll('#modeToggle .seg').forEach(b=> b.classList.toggle('active', b.dataset.m===(on?'own':'presets')));
     if(on){ document.documentElement.style.setProperty('--accent','#cfd8e6'); accentRGB=hexToRgb('#cfd8e6'); }
     else  { const s=SCALES[scaleIdx]; document.documentElement.style.setProperty('--accent',s.accent); accentRGB=hexToRgb(s.accent); }
@@ -832,9 +836,22 @@ export function initGame() {
   });
   (function(){
     const BG=[["bg-morph","MORPH"],["bg-original","ORIGINAL"],["bg-pixel","PIXEL"]];
-    let bi=0; const btn=document.getElementById("bgToggle");
-    function apply(){ bloom.className=BG[bi][0]; if(btn) btn.textContent="BG · "+BG[bi][1]; }
-    if(btn){ btn.addEventListener("click", ()=>{ bi=(bi+1)%BG.length; apply(); }); apply(); }
+    let bi=0;
+    const bgBtn=document.getElementById("bgToggle");
+    const gameBtn=document.getElementById("gameToggle");
+    function applyBg(){ bloom.className=BG[bi][0]; if(bgBtn) bgBtn.textContent="BG · "+BG[bi][1]; }
+    function applyGame(){
+      document.body.classList.toggle("mono", mono);
+      if(gameBtn) gameBtn.textContent="GAME · "+(mono?"MONO":"COLOR");
+      if(mono && BG[bi][0]==="bg-morph"){ bi=1; applyBg(); }   // morph makes no sense in mono
+    }
+    if(bgBtn){ bgBtn.addEventListener("click", ()=>{
+      bi=(bi+1)%BG.length;
+      if(mono && BG[bi][0]==="bg-morph") bi=(bi+1)%BG.length; // skip morph while mono
+      applyBg();
+    }); }
+    if(gameBtn){ gameBtn.addEventListener("click", ()=>{ mono=!mono; applyGame(); }); }
+    applyBg(); applyGame();
   })();
   document.getElementById("speedPrev").onclick=()=>{ ensureAudio(); setSpeed(speedIdx-1); };
   document.getElementById("speedNext").onclick=()=>{ ensureAudio(); setSpeed(speedIdx+1); };
