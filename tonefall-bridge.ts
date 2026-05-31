@@ -1,23 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Tonefall → Audiotool, built on the PROVEN note-writing pattern from
-// "Matrix Evolutions" (Snad Industries). The app does NOT create devices or
-// projects — the user opens a project and adds a synth; we find it and write notes.
+// Tonefall → Audiotool transfer.
+//  • MIDI: proven note-writing pattern (Matrix Evolutions): find the user's synth,
+//    write noteCollection + noteRegion + individual notes into its track.
+//  • Audio: upload the rendered WAV as a sample, WAIT for processing (upload.ready),
+//    then insertSample with the finished SampleMeta (auto-creates audio device+track).
 // ─────────────────────────────────────────────────────────────────────────────
-import { Ticks } from "@audiotool/nexus/utils"
-
-// One bar (4/4). A 16-column Tonefall grid = one bar of 16th notes.
-export const BAR_TICKS = Ticks.SemiBreve
 
 export type SynthType = "heisenberg" | "pulverisateur" | "space" | "bassline"
 
-// A lit Tonefall cell: row (0 = top/highest) and col (16th-note step).
-export type Pattern = {
-  cols: number
-  rows: number
-  cells: { col: number; row: number }[]
-}
-
-// A concrete note event, same shape Matrix Evolutions writes.
 export type NoteCell = {
   pitch: number
   positionTicks: number
@@ -25,39 +15,21 @@ export type NoteCell = {
   velocity: number
 }
 
-// ── Pattern → notes ────────────────────────────────────────────────────────
-// Placeholder pitch mapping (C minor pentatonic) so the test bench sounds
-// musical. When we merge the real game in, this gets replaced by Tonefall's
-// own buildScale() so pitches match exactly what you hear in the game.
-const PENTA = [0, 3, 5, 7, 10]
-export function rowToMidi(rows: number, row: number, base = 48 /* C3 */): number {
-  const fromBottom = rows - 1 - row
-  const oct = Math.floor(fromBottom / PENTA.length)
-  const deg = PENTA[fromBottom % PENTA.length]
-  return base + oct * 12 + deg
-}
-
-export function patternToNotes(p: Pattern): NoteCell[] {
-  const stepTicks = BAR_TICKS / p.cols
-  return p.cells.map((c) => ({
-    pitch: rowToMidi(p.rows, c.row),
-    positionTicks: c.col * stepTicks,
-    durationTicks: stepTicks,
-    velocity: 0.7,
-  }))
-}
-
-// ── Send as MIDI ─────────────────────────────────────────────────────────────
-// Finds the chosen synth (already placed by the user) and writes the notes into
-// its note track — reusing an existing track for that synth or creating one.
-export async function sendAsMidi(nexus: any, notes: NoteCell[], synthType: SynthType) {
+// ── MIDI ─────────────────────────────────────────────────────────────────────
+export async function sendAsMidi(nexus: any, notes: NoteCell[], synthType: SynthType, bpm: number) {
+  if (!notes.length) throw new Error("No notes — play and Hold a loop first.")
   const synths = nexus.queryEntities.ofTypes(synthType).get()
   if (!synths.length) {
-    throw new Error(`No ${synthType} found in the project — add one in Audiotool first.`)
+    throw new Error(`No ${synthType} found — add one in Audiotool first.`)
   }
   const synth = synths[0]
 
   await nexus.modify((t: any) => {
+    // Match the project tempo to the Tonefall speed so the 16th-note grid plays
+    // at the same speed you heard in the game.
+    const cfg = nexus.queryEntities.ofTypes("config").get()[0]
+    if (cfg && cfg.fields?.tempoBpm) t.update(cfg.fields.tempoBpm, bpm)
+
     const existingTracks = nexus.queryEntities.ofTypes("noteTrack").get()
     const existingTrack = existingTracks.find(
       (tr: any) => JSON.stringify(tr.fields.player?.value) === JSON.stringify(synth.location),
@@ -75,8 +47,8 @@ export async function sendAsMidi(nexus: any, notes: NoteCell[], synthType: Synth
       collection: col.location,
       region: {
         positionTicks: 0,
-        durationTicks: BAR_TICKS,
-        loopDurationTicks: BAR_TICKS,
+        durationTicks: 15360,        // one bar (Ticks.SemiBreve)
+        loopDurationTicks: 15360,
         loopOffsetTicks: 0,
         collectionOffsetTicks: 0,
       },
@@ -92,12 +64,55 @@ export async function sendAsMidi(nexus: any, notes: NoteCell[], synthType: Synth
       })
     }
   })
+  return notes.length
 }
 
-// ── Send as Audio ──────────────────────────────────────────────────────────────
-// Insert the rendered loop as a sample (the BandM8-style path). Still to confirm
-// the exact InsertSampleOptions / Audiograph signature — not yet wired.
-// Safe fallback today: export the WAV from Tonefall and use Audiotool's Sample Upload.
-export async function sendAsAudio(_nexus: any, _wavBytes?: Uint8Array) {
-  throw new Error("Audio insert not wired yet — use Tonefall's WAV export + Audiotool Sample Upload for now.")
+// ── Audio ──────────────────────────────────────────────────────────────────────
+// onPhase lets the UI report progress ("uploading" → "processing" → "inserting").
+export async function sendAsAudio(
+  at: any,
+  nexus: any,
+  wavBlob: Blob,
+  musicDurationTicks: number,
+  bpm: number,
+  onPhase?: (p: string) => void,
+) {
+  onPhase?.("uploading")
+  const upload = await at.samples.upload({
+    file: wavBlob,
+    displayName: "Tonefall loop",
+    kind: "loop",
+    tags: ["tonefall"],
+  })
+  if (upload instanceof Error) throw upload
+
+  const uploadErr = await upload.uploaded
+  if (uploadErr instanceof Error) throw uploadErr
+
+  // Wait for server-side processing so the sample is actually loadable
+  // (otherwise it shows up but won't load until a project reload).
+  onPhase?.("processing")
+  const meta = await upload.ready
+  if (meta instanceof Error) throw meta
+
+  onPhase?.("inserting")
+  // Reuse an existing audio track/device so the sample isn't dumped at a random
+  // spot on the desktop; only auto-create if the project has none yet.
+  const tracks = nexus.queryEntities.ofTypes("audioTrack").get()
+  const devices = nexus.queryEntities.ofTypes("audioDevice").get()
+  const attachTo = tracks[0] || devices[0] || undefined
+
+  await nexus.modify((t: any) => {
+    // Match project tempo to the game speed so the 4-bar loop sits without stretch.
+    const cfg = nexus.queryEntities.ofTypes("config").get()[0]
+    if (cfg && cfg.fields?.tempoBpm) t.update(cfg.fields.tempoBpm, bpm)
+
+    t.insertSample(meta, {
+      sample: { musicDurationTicks }, // exact 4-bar length → no stretch, in tempo
+      region: { positionTicks: 0, durationTicks: musicDurationTicks },
+      loop: true,
+      ...(attachTo ? { attachTo } : {}),
+    })
+  })
+  return meta.name
 }

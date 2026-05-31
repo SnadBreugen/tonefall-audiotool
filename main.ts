@@ -1,85 +1,82 @@
 import { audiotool } from "@audiotool/nexus"
 import { CLIENT_ID, REDIRECT_URL } from "./config"
-import {
-  sendAsMidi,
-  sendAsAudio,
-  patternToNotes,
-  type Pattern,
-  type SynthType,
-} from "./tonefall-bridge"
+import { initGame } from "./game.js"
+import { sendAsMidi, sendAsAudio, type SynthType } from "./tonefall-bridge"
 
-const statusEl = document.getElementById("status")!
-const connectEl = document.getElementById("connect")!
-const actionsEl = document.getElementById("actions")!
 const loginEl = document.getElementById("login")!
-const appuiEl = document.getElementById("appui")!
-const setStatus = (s: string) => (statusEl.textContent = s)
-console.log("TONEFALL → Audiotool — build 0.3")
+const appwrapEl = document.getElementById("appwrap")!
+const atStatusEl = document.getElementById("atstatus")!
+const sendStatusEl = document.getElementById("atsendstatus")!
 
+let at: any = null
+let nexus: any = null
 let selectedSynth: SynthType = "heisenberg"
 
-// Hardcoded demo pattern to test the pipeline before merging the real game.
-// row 0 = top (highest), col = 16th-note step on a 16×16 grid.
-function demoPattern(): Pattern {
-  return {
-    cols: 16,
-    rows: 16,
-    cells: [
-      { col: 0, row: 8 }, { col: 2, row: 6 }, { col: 4, row: 5 }, { col: 6, row: 7 },
-      { col: 8, row: 3 }, { col: 10, row: 6 }, { col: 12, row: 4 }, { col: 14, row: 6 },
-    ],
-  }
-}
+const setAtStatus = (s: string, cls = "") => { atStatusEl.textContent = s; atStatusEl.className = cls }
+const setSendStatus = (s: string, cls = "") => { sendStatusEl.textContent = s; sendStatusEl.className = cls }
 
-async function run(label: string, fn: () => Promise<void>) {
-  try {
-    setStatus(`${label}…`)
-    await fn()
-    setStatus(`${label}: done ✓`)
-  } catch (e: any) {
-    setStatus(`${label}: error — ${e?.message ?? e}`)
-    console.error(e)
-  }
-}
+console.log("TONEFALL → Audiotool — build 0.8.1")
 
-function wireActions(nexus: any) {
+function wireSendPanel() {
   // synth selector
-  document.querySelectorAll<HTMLButtonElement>(".synth").forEach((b) => {
+  document.querySelectorAll<HTMLButtonElement>("#synthbtns .synth").forEach((b) => {
     b.onclick = () => {
-      document.querySelectorAll(".synth").forEach((x) => x.classList.remove("on"))
+      document.querySelectorAll("#synthbtns .synth").forEach((x) => x.classList.remove("on"))
       b.classList.add("on")
       selectedSynth = b.dataset.s as SynthType
     }
   })
 
-  document.getElementById("sendMidi")!.onclick = () =>
-    run(`Send as MIDI → ${selectedSynth}`, () =>
-      sendAsMidi(nexus, patternToNotes(demoPattern()), selectedSynth),
-    )
-  document.getElementById("sendAudio")!.onclick = () =>
-    run("Send as Audio", () => sendAsAudio(nexus))
+  document.getElementById("atMidi")!.onclick = async () => {
+    if (!nexus) { setSendStatus("Connect your project first (step 0 above).", "err"); return }
+    const tf = (window as any).__tonefall
+    const notes = tf?.getLoopNotes?.() ?? []
+    try {
+      setSendStatus(`Writing MIDI → ${selectedSynth}…`)
+      const bpm = tf?.getBpm ? tf.getBpm() : 120
+      const n = await sendAsMidi(nexus, notes, selectedSynth, bpm)
+      setSendStatus(`✓ ${n} notes written to ${selectedSynth} (tempo ${bpm} BPM).`, "ok")
+    } catch (e: any) {
+      setSendStatus(`Error: ${e?.message ?? e}`, "err")
+      console.error(e)
+    }
+  }
 
-  window.addEventListener("beforeunload", () => { nexus.stop?.() })
+  document.getElementById("atAudio")!.onclick = async () => {
+    if (!nexus || !at) { setSendStatus("Connect your project first (step 0 above).", "err"); return }
+    const tf = (window as any).__tonefall
+    if (!tf?.renderSendWav && !tf?.renderWavBlob) { setSendStatus("Game not ready.", "err"); return }
+    try {
+      setSendStatus("Rendering 4-bar loop…")
+      const blob = await (tf.renderSendWav ? tf.renderSendWav() : tf.renderWavBlob())
+      const ticks = tf.sendDurationTicks ?? (tf.barTicks ?? 15360) * 4
+      const bpm = tf.getBpm ? tf.getBpm() : 120
+      await sendAsAudio(at, nexus, blob, ticks, bpm, (phase: string) => {
+        if (phase === "uploading") setSendStatus("Uploading sample…")
+        else if (phase === "processing") setSendStatus("Processing sample (transcoding)…")
+        else if (phase === "inserting") setSendStatus("Inserting into project…")
+      })
+      setSendStatus("✓ 4-bar audio loop inserted (tempo " + (tf.getBpm ? tf.getBpm() : 120) + " BPM).", "ok")
+    } catch (e: any) {
+      setSendStatus(`Error: ${e?.message ?? e}`, "err")
+      console.error(e)
+    }
+  }
 }
 
-function showConnect(at: any) {
-  setStatus("Logged in. Paste an Audiotool project link, then Connect.")
-  connectEl.hidden = false
+function wireConnect() {
   const input = document.getElementById("projectUrl") as HTMLInputElement
   const btn = document.getElementById("connectBtn")!
   btn.onclick = async () => {
     const url = input.value.trim()
-    if (!url) { setStatus("Paste a project link first."); return }
+    if (!url) { setAtStatus("paste a project link", "err"); return }
     try {
-      setStatus("Opening project…")
-      const nexus = await at.open(url)
+      setAtStatus("connecting…")
+      nexus = await at.open(url)
       await nexus.start()
-      setStatus("Connected. Add a synth in Audiotool, pick it below, then Send.")
-      connectEl.hidden = true
-      actionsEl.hidden = false
-      wireActions(nexus)
+      setAtStatus("connected ✓", "ok")
     } catch (e: any) {
-      setStatus(`Connect error — ${e?.message ?? e}`)
+      setAtStatus(`error: ${e?.message ?? e}`, "err")
       console.error(e)
     }
   }
@@ -87,25 +84,32 @@ function showConnect(at: any) {
 
 async function boot() {
   if (CLIENT_ID.startsWith("REPLACE")) {
-    appuiEl.hidden = false
-    setStatus("Set CLIENT_ID in src/config.ts first.")
+    loginEl.hidden = true
+    appwrapEl.hidden = false
+    setAtStatus("Set CLIENT_ID in src/config.ts first.", "err")
     return
   }
-  const at = await audiotool({ clientId: CLIENT_ID, redirectUrl: REDIRECT_URL, scope: "project:write" })
+
+  at = await audiotool({ clientId: CLIENT_ID, redirectUrl: REDIRECT_URL, scope: "project:write sample:write" })
 
   if (at.status === "unauthenticated") {
     loginEl.hidden = false
-    appuiEl.hidden = true
+    appwrapEl.hidden = true
     ;(document.getElementById("loginBtn") as HTMLButtonElement).onclick = () => at.login()
     return
   }
 
+  // logged in → reveal app, start the game, wire Audiotool
   loginEl.hidden = true
-  appuiEl.hidden = false
-  showConnect(at)
+  appwrapEl.hidden = false
+  initGame()           // game DOM is now visible, so canvas sizing is correct
+  wireConnect()
+  wireSendPanel()
 }
 
 boot().catch((e: any) => {
-  setStatus(`Boot error — ${e?.message ?? e}`)
+  loginEl.hidden = true
+  appwrapEl.hidden = false
+  setAtStatus(`boot error: ${e?.message ?? e}`, "err")
   console.error(e)
 })
