@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TONEFALL — Audiotool Edition</title>
+  <style>
+    :root{ --bg:#0a0a0a; --ink:#f2efe6; --amber:#ffb228; --panel:#171717; --dim:#8d8b82; }
+    *{ box-sizing:border-box; margin:0; padding:0; font-family:"Space Mono",ui-monospace,monospace; }
+    body{ background:var(--bg); color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    #app{ width:100%; max-width:520px; border:3px solid var(--ink); padding:28px; }
+    h1{ font-size:22px; letter-spacing:2px; margin-bottom:6px; }
+    h1 b{ color:var(--amber); }
+    .sub{ color:var(--dim); font-size:12px; letter-spacing:1px; margin-bottom:24px; }
+    button{ font-family:inherit; font-size:13px; letter-spacing:1px; text-transform:uppercase; color:#000; background:var(--amber); border:2px solid var(--ink); padding:12px 16px; cursor:pointer; }
+    button:hover{ background:var(--ink); }
+    #loginBtn{ width:100%; padding:16px; font-size:14px; }
+    #status{ border-left:4px solid var(--amber); padding:8px 12px; margin-bottom:20px; font-size:13px; background:var(--panel); min-height:38px; display:flex; align-items:center; }
+    #connect{ display:flex; gap:8px; margin-bottom:20px; }
+    #connect input{ flex:1; font-family:inherit; font-size:12px; color:var(--ink); background:var(--panel); border:2px solid var(--ink); padding:10px; }
+    #connect button{ flex:0 0 auto; }
+    #actions{ display:flex; flex-direction:column; gap:10px; }
+    .synthsel{ margin-bottom:6px; }
+    .synthsel .lbl{ font-size:10px; letter-spacing:1px; color:var(--dim); text-transform:uppercase; margin-bottom:6px; }
+    .synthbtns{ display:flex; gap:6px; flex-wrap:wrap; }
+    .synth{ background:var(--panel); color:var(--dim); border:2px solid var(--ink); padding:7px 10px; font-size:11px; }
+    .synth:hover{ background:var(--ink); color:#000; }
+    .synth.on{ background:var(--amber); color:#000; }
+    #sendAudio{ background:var(--panel); color:var(--ink); }
+    #sendAudio:hover{ background:var(--ink); color:#000; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>TONEFALL <b>→ AUDIOTOOL</b></h1>
+    <div class="sub">by snad industries · nexus edition · <b style="color:var(--amber)">build 0.3</b></div>
+
+    <!-- First screen: only this -->
+    <div id="login">
+      <button id="loginBtn">Login with Audiotool</button>
+    </div>
+
+    <!-- Everything else appears after login -->
+    <div id="appui" hidden>
+      <div id="status">…</div>
+      <div id="connect" hidden>
+        <input id="projectUrl" type="text" placeholder="https://beta.audiotool.com/studio?project=…" />
+        <button id="connectBtn">Connect</button>
+      </div>
+      <div id="actions" hidden>
+        <div class="synthsel">
+          <div class="lbl">Synth in your project</div>
+          <div class="synthbtns">
+            <button class="synth on" data-s="heisenberg">Heisenberg</button>
+            <button class="synth" data-s="pulverisateur">Pulverisateur</button>
+            <button class="synth" data-s="space">Space</button>
+            <button class="synth" data-s="bassline">Bassline</button>
+          </div>
+        </div>
+        <button id="sendMidi">Send as MIDI</button>
+        <button id="sendAudio">Send as Audio</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
