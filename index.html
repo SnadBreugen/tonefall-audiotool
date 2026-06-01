@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>TONEFALL — Audiotool Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0a; --panel:#171717; --panel2:#202020;
+    --ink:#f2efe6; --dim:#8d8b82; --amber:#ffb228; --amber-d:#a86f15;
+    --screen:#0b0e0b; --accent:#ffb228;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  [hidden]{ display:none !important }
+  html,body{height:100%}
+  body{
+    font-family:"Space Mono",ui-monospace,monospace; color:var(--ink); background:var(--bg);
+    background-image:
+      linear-gradient(rgba(242,239,230,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(242,239,230,.035) 1px, transparent 1px);
+    background-size:34px 34px,34px 34px;
+    min-height:100%; display:flex; padding:18px 18px 44px; overflow-y:auto; user-select:none;
+  }
+
+  /* login screen */
+  #login{ margin:auto; display:flex; flex-direction:column; align-items:center; gap:18px; text-align:center; }
+  #login .lg1{ font-family:"Silkscreen",monospace; font-weight:700; font-size:30px; letter-spacing:2px; }
+  #login .lg1 b{ color:var(--amber) }
+  #login .lgsub{ font-family:"Silkscreen",monospace; font-size:10px; letter-spacing:3px; color:var(--dim) }
+  #loginBtn{ font-family:"Silkscreen",monospace; font-size:15px; letter-spacing:2px; text-transform:uppercase;
+    color:#000; background:var(--amber); border:3px solid var(--ink); padding:16px 34px; cursor:pointer; }
+  #loginBtn:hover{ background:var(--ink) }
+
+  /* app wrap (after login) */
+  #appwrap{ width:100%; margin:auto; display:flex; flex-direction:column; align-items:center; gap:14px; }
+  #atbar{ width:100%; max-width:980px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:var(--panel); border:2px solid var(--ink); padding:8px 12px; }
+  #atbar .att{ font-family:"Silkscreen",monospace; font-size:11px; letter-spacing:2px; color:var(--amber); }
+  #atbar .bd{ font-family:"Silkscreen",monospace; font-size:9px; letter-spacing:2px; color:var(--dim); }
+  #atbar input{ flex:1; min-width:200px; font-family:inherit; font-size:12px; color:var(--ink);
+    background:var(--screen); border:2px solid var(--ink); padding:8px; }
+  #atbar button{ font-family:"Silkscreen",monospace; font-size:11px; letter-spacing:1px; color:#000;
+    background:var(--amber); border:2px solid var(--ink); padding:8px 12px; cursor:pointer; }
+  #atbar button:hover{ filter:brightness(1.08) }
+  #atstatus{ font-size:11px; letter-spacing:1px; color:var(--dim) }
+  #atstatus.ok{ color:#7ee08a } #atstatus.err{ color:#ff8a8a }
+
+  .wrap{ display:flex;gap:24px;align-items:center;flex-wrap:nowrap; width:100%;justify-content:center;position:relative;z-index:1; margin:auto }
+  #bloom{ position:fixed; inset:0; width:100vw; height:100vh; z-index:0; pointer-events:none; opacity:.7; transform:scale(1.2); }
+  #bloom.bg-morph{ filter:blur(40px) grayscale(1) sepia(1) saturate(5) brightness(1.7);
+    animation:bloomhue 48s linear infinite; }
+  @keyframes bloomhue{ to{ filter:blur(40px) grayscale(1) sepia(1) saturate(5) hue-rotate(360deg) brightness(1.7); } }
+  #bloom.bg-original{ filter:blur(46px) saturate(1.4) brightness(1.25); animation:none; }
+  #bloom.bg-pixel{ filter:brightness(.5) saturate(1.15) contrast(1.15); image-rendering:pixelated; animation:none; transform:scale(1.0); }
+  .side{ min-width:180px; max-width:210px; }
+  .side-right{ width:300px; max-width:300px; min-width:280px; }
+  .selgrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 8px; margin-bottom:14px }
+  .selgrid .mood{ margin-bottom:0; min-width:0 }
+  #voiceSel{ grid-column:1 / -1 }
+  .brand{ margin-bottom:22px; }
+  .brandchip{ display:inline-flex;flex-direction:column;gap:8px;background:transparent;padding:0 0 10px;border-bottom:4px solid var(--amber) }
+  .logoRow{ display:flex;align-items:center;gap:10px }
+  .brand .wave{ width:38px;height:24px;flex:0 0 auto;color:var(--amber) }
+  .brand .t1{ font-family:"Silkscreen",monospace;font-weight:700;font-size:22px;letter-spacing:1px;color:var(--ink);line-height:1.05 }
+  .brand .t2{ font-family:"Silkscreen",monospace;font-weight:700;font-size:22px;letter-spacing:5px;color:var(--amber);line-height:1.15 }
+  .brand .sub{ margin-top:6px;font-family:"Silkscreen",monospace;font-size:10px;color:var(--dim);letter-spacing:3px }
+  .stat{ margin-bottom:13px }
+  .stat .k{ font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase }
+  .stat .v{ font-family:"Silkscreen",monospace;font-weight:700;font-size:27px;color:var(--ink);margin-top:3px;line-height:1 }
+  .next-wrap{ margin-bottom:18px }
+  .next-wrap .k{ font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:8px }
+  #next{ display:block;background:var(--screen);border:2px solid var(--ink) }
+  .mood{ margin-bottom:12px }
+  .mood .k{ font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:5px }
+  .moodbox{ display:flex;align-items:center;gap:6px;background:var(--panel);border:2px solid var(--ink);padding:6px;height:54px;box-sizing:border-box;overflow:hidden }
+  .chev{ flex:0 0 auto }
+  .moodtxt{ flex:1;text-align:center;min-width:0 }
+  .moodtxt .mn{ font-family:"Silkscreen",monospace;font-size:13px;color:var(--ink);letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+  .moodtxt .md{ font-size:11px;color:var(--amber);letter-spacing:1px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+  .chev{ background:var(--panel2);border:2px solid var(--ink);color:var(--ink);width:32px;height:38px;cursor:pointer;font-size:14px;flex:0 0 auto;transition:background .1s,color .1s }
+  .selgrid .chev{ width:26px }
+  .chev:hover{ background:var(--ink);color:var(--bg) }
+  .chev:active{ background:var(--amber);color:#000;border-color:var(--amber) }
+  .fx{ margin-bottom:16px }
+  .fx .k{ font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:7px }
+  .pad{ position:relative;width:150px;height:150px;cursor:crosshair;overflow:hidden;
+    background:var(--screen);border:2px solid var(--ink);touch-action:none;
+    background-image:linear-gradient(rgba(255,178,40,.08) 1px, transparent 1px),linear-gradient(90deg, rgba(255,178,40,.08) 1px, transparent 1px);
+    background-size:25px 25px, 25px 25px; }
+  .pad .ax{ position:absolute;font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;pointer-events:none }
+  .pad .ax-y{ top:8px;left:9px } .pad .ax-x{ bottom:8px;right:9px }
+  .pad .dot{ position:absolute;width:18px;height:18px;left:33%;top:45%;background:var(--amber);box-shadow:0 0 16px rgba(255,178,40,.9);transform:translate(-50%,-50%);pointer-events:none;transition:box-shadow .1s }
+  .fxhint{ font-size:11px;color:var(--dim);margin-top:8px;letter-spacing:.5px;line-height:1.8 }
+  .modeToggle{ display:flex; gap:0; background:var(--panel); border:2px solid var(--ink); padding:0; margin-bottom:14px }
+  .modeToggle .seg{ flex:1; font-family:"Silkscreen",monospace; font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--dim); background:transparent; border:none; padding:10px 6px; cursor:pointer; transition:background .1s,color .1s }
+  .modeToggle .seg+.seg{ border-left:2px solid var(--ink) }
+  .modeToggle .seg.active{ color:#000; background:var(--amber) }
+  .fxhint b{ color:var(--amber);font-weight:700 }
+  .kb{ position:relative; height:62px; margin-top:14px; display:flex; gap:3px; }
+  .kb .w{ position:relative; flex:1; border:2px solid var(--ink); border-top:none; cursor:pointer; background:#d8d4c8; transition:filter .08s; }
+  .kb .w span{ position:absolute; bottom:5px; left:0; right:0; text-align:center; font-family:"Silkscreen",monospace; font-size:9px; color:rgba(10,10,10,.6); pointer-events:none }
+  .kb .b{ position:absolute; top:0; width:8%; height:60%; transform:translateX(-50%); cursor:pointer; z-index:2; background:#0a0a0a; border:2px solid var(--ink); border-top:none; transition:filter .08s; }
+  .kb .w.on,.kb .b.on{ background:var(--amber); border-color:var(--amber); box-shadow:0 0 14px -1px var(--amber); }
+  .kb .w.on span{ color:#000 }
+  .kb .w:active,.kb .b:active{ filter:brightness(1.12); }
+  .kblabel{ font-size:11px;color:var(--dim);letter-spacing:1px;margin-top:8px;text-align:center }
+  .boardhead{ display:flex; align-items:center; gap:12px; margin-bottom:10px; min-height:32px; }
+  .topbar{ display:flex;gap:8px;margin-left:auto }
+  .boardrow{ display:flex; align-items:center; justify-content:center; }
+  .padrow{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
+  .fxbtn{ width:74px; height:62px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-family:"Silkscreen",monospace; font-size:8px; letter-spacing:.3px; text-transform:uppercase; text-align:center;
+    line-height:1.05; border:2px solid var(--ink); cursor:pointer; transition:transform .05s, filter .05s; padding:4px 2px;
+    background:#2fd9c4; color:#06231f; box-shadow:3px 3px 0 rgba(0,0,0,.5); }
+  .fxbtn svg{ width:22px; height:22px; display:block; margin-bottom:1px; }
+  .fxbtn span{ display:block }
+  .fxbtn i{ font-style:normal; font-size:7.5px; opacity:.65 }
+  .fxbtn:hover{ filter:brightness(1.1) }
+  .fxbtn:active,.fxbtn.hit{ transform:translate(2px,2px); box-shadow:1px 1px 0 rgba(0,0,0,.5); filter:brightness(1.25) }
+  /* background-mode + game-mode toggles (top-right, outside the play area) */
+  #topToggles{ position:fixed; top:14px; right:16px; z-index:40; display:flex; gap:8px; }
+  #topToggles button{ font-family:"Silkscreen",monospace; font-size:10px; letter-spacing:1px;
+    color:var(--amber); background:rgba(10,10,10,.7); border:2px solid var(--amber);
+    padding:8px 12px; cursor:pointer; backdrop-filter:blur(4px); min-width:140px; text-align:center; }
+  #topToggles button:hover{ background:var(--amber); color:#000 }
+  /* MONO ("original tonematrix" white) theme */
+  body.mono{ --amber:#eaeaea; --amber-d:#888; --accent:#eaeaea; }
+  body.mono .fxbtn{ background:#e8e8e8; color:#0a0a0a; }
+  body.mono #board{ box-shadow:0 0 0 10px #111, 0 0 0 13px #fff; }
+  #jamflash{ flex:1; min-width:0; pointer-events:none; font-family:"Silkscreen",monospace; font-size:15px; letter-spacing:2px; text-transform:uppercase; color:var(--amber); opacity:0; transition:opacity .4s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  #jamflash.show{ opacity:1; transition:opacity .08s; }
+  #holdbadge{ font-family:"Silkscreen",monospace; font-size:12px; letter-spacing:2px; color:#000; background:var(--amber); padding:5px 9px; opacity:0; transition:opacity .1s }
+  #holdbadge.show{ opacity:1 }
+  .hint{ font-size:12px;color:var(--dim);line-height:1.9;letter-spacing:.5px }
+  .hint b{ color:var(--amber);font-weight:700 }
+  .ports{ display:flex;gap:8px;align-items:center;margin-bottom:20px;position:relative;z-index:2 }
+  .ports i{ width:18px;height:11px;background:var(--panel2);border:2px solid var(--ink);display:block }
+  .ports span{ font-family:"Silkscreen",monospace;font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase }
+  .stage{ position:relative; }
+  #board{ display:block;background:var(--screen);border:3px solid var(--ink);box-shadow:0 0 0 10px var(--panel), 0 0 0 13px var(--ink);touch-action:none; }
+  .overlay{ position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;background:rgba(8,8,8,.93);padding:24px;border:3px solid var(--ink); }
+  .overlay.hidden{ display:none }
+  .overlay h2{ font-family:"Silkscreen",monospace;font-weight:700;font-size:25px;letter-spacing:2px;color:var(--ink);line-height:1.3; }
+  .overlay p{ font-size:14px;color:var(--dim);line-height:1.9;max-width:300px }
+  .overlay .big{ font-family:"Silkscreen",monospace;font-weight:700;font-size:42px;color:var(--amber) }
+  button.btn{ font-family:"Silkscreen",monospace;font-size:15px;letter-spacing:2px;text-transform:uppercase;color:#000;background:var(--amber);border:3px solid var(--ink);padding:14px 30px;cursor:pointer;transition:background .12s,color .12s,transform .1s; }
+  button.btn:hover{ background:var(--ink);color:#000 }
+  button.btn:active{ transform:translateY(2px) }
+  .icbtn{ font-family:"Silkscreen",monospace;font-size:11px;letter-spacing:1px;color:var(--ink);background:var(--panel);border:2px solid var(--ink);padding:9px 12px;cursor:pointer;transition:background .1s,color .1s; }
+  .icbtn:hover{ background:var(--ink);color:var(--bg) }
+  .icbtn.on{ color:#000;background:var(--amber);border-color:var(--amber) }
+  .icbtn.export{ color:#000;background:var(--amber);border-color:var(--amber) }
+  .icbtn.rec{ color:#fff;background:#cc2b2b;border-color:#cc2b2b;animation:recpulse 1s steps(2) infinite }
+  @keyframes recpulse{ 50%{ opacity:.5 } }
+  /* Send modal (opens on Hold) */
+  .modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+    background:rgba(6,6,6,.78); padding:20px; }
+  .modal.hidden{ display:none }
+  .modalbox{ position:relative; width:100%; max-width:440px; background:var(--panel); border:3px solid var(--amber);
+    box-shadow:8px 8px 0 rgba(0,0,0,.6); padding:24px 22px; }
+  .mclose{ position:absolute; top:8px; right:8px; width:30px; height:30px; padding:0; font-size:13px;
+    color:var(--ink); background:var(--panel2); border:2px solid var(--ink); cursor:pointer }
+  .mclose:hover{ background:var(--ink); color:#000 }
+  .mtitle{ font-family:"Silkscreen",monospace; font-weight:700; font-size:18px; letter-spacing:2px; color:var(--amber) }
+  .msub{ font-size:12px; color:var(--dim); letter-spacing:.5px; margin:6px 0 18px }
+  .msec{ margin-bottom:16px }
+  .mlbl{ font-family:"Silkscreen",monospace; font-size:10px; letter-spacing:1px; color:var(--dim); text-transform:uppercase; margin-bottom:8px }
+  .connectrow{ display:flex; gap:8px; margin-bottom:8px }
+  .connectrow input{ flex:1; min-width:0; font-family:inherit; font-size:12px; color:var(--ink); background:var(--screen); border:2px solid var(--ink); padding:9px }
+  .connectrow button{ flex:0 0 auto; font-family:"Silkscreen",monospace; font-size:11px; letter-spacing:1px; color:#000; background:var(--amber); border:2px solid var(--ink); padding:9px 12px; cursor:pointer }
+  .connectrow button:hover{ filter:brightness(1.08) }
+  #atstatus{ font-size:11px; letter-spacing:.5px; color:var(--dim) }
+  #atstatus.ok{ color:#7ee08a } #atstatus.err{ color:#ff8a8a }
+  .synthbtns{ display:flex; gap:6px; flex-wrap:wrap }
+  .synth{ font-family:"Silkscreen",monospace; font-size:10px; letter-spacing:1px; color:var(--dim); background:var(--panel2); border:2px solid var(--ink); padding:7px 9px; cursor:pointer }
+  .synth:hover{ background:var(--ink); color:#000 }
+  .synth.on{ background:var(--amber); color:#000; border-color:var(--amber) }
+  .sendrow{ display:flex; gap:8px; margin-bottom:8px }
+  .sbtn{ font-family:"Silkscreen",monospace; font-size:12px; letter-spacing:1px; color:#000; background:var(--amber); border:2px solid var(--ink); padding:11px 14px; cursor:pointer; flex:1 }
+  .sbtn.alt{ width:100%; color:var(--ink); background:var(--panel2) }
+  .sbtn.alt:hover{ background:var(--ink); color:#000 }
+  .sbtn:hover{ filter:brightness(1.08) }
+  #atsendstatus{ margin-top:10px; font-size:11px; letter-spacing:.5px; color:var(--dim); min-height:16px }
+  #atsendstatus.ok{ color:#7ee08a } #atsendstatus.err{ color:#ff8a8a }
+  #exportResult{ margin-top:10px; display:flex; flex-direction:column; align-items:center; gap:8px }
+  #exportResult .exlab{ font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:1px;color:var(--amber);text-transform:uppercase }
+  #exportResult audio{ width:100%;height:34px }
+  #exportResult .exsave{ font-family:"Silkscreen",monospace;font-size:11px;letter-spacing:1px;text-decoration:none;color:#000;background:var(--amber);border:2px solid var(--ink);padding:8px 14px;cursor:pointer }
+  #exportResult .exerr{ font-family:"Space Mono",monospace;font-size:12px;color:#ff8a8a }
+
+  .touch{ display:none;margin-top:16px;gap:10px;align-items:center;justify-content:center }
+  .touch button{ font-size:22px;color:var(--ink);background:var(--panel);border:2px solid var(--ink);width:58px;height:54px;cursor:pointer; }
+  .touch button:active{ background:var(--amber);color:#000 }
+  .touch .drop{ width:auto;padding:0 16px;font-size:13px;letter-spacing:1px;font-family:"Silkscreen",monospace }
+  .footer{ position:fixed;left:0;right:0;bottom:0;height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:var(--bg);border-top:2px solid var(--ink);z-index:10;font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:1px;color:var(--amber) }
+  .footer i{ display:inline-block;width:7px;height:7px;background:var(--amber);margin-right:7px;vertical-align:middle }
+  .footer .r{ color:var(--dim) }
+  #tip{ position:fixed; z-index:60; max-width:230px; background:var(--panel); color:var(--ink); border:2px solid var(--amber); padding:8px 10px; font-family:"Space Mono",ui-monospace,monospace; font-size:11px; line-height:1.55; letter-spacing:.3px; pointer-events:none; opacity:0; transform:translateY(4px); transition:opacity .12s, transform .12s; box-shadow:4px 4px 0 rgba(0,0,0,.55); }
+  #tip.show{ opacity:1; transform:translateY(0) }
+  #tip b{ color:var(--amber); font-weight:700 }
+  @media (max-width:760px){
+    .wrap{ flex-direction:column;gap:14px }
+    .side{ width:100%;max-width:none;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end;justify-content:center }
+    .side-right{ width:100%;max-width:420px;min-width:0;display:block }
+    .selgrid{ max-width:420px;margin-left:auto;margin-right:auto }
+    .brand{ width:100%;text-align:center;margin-bottom:0 }
+    .brand .logoRow{ justify-content:center }
+    .next-wrap,.hint{ display:none }
+    .stat{ margin-bottom:0 } .stat .v{ font-size:22px }
+    .topbar{ margin-left:auto;justify-content:flex-end }
+    .touch{ display:flex } .footer{ display:none }
+  }
+</style>
+  <script type="module" crossorigin src="/tonefall-audiotool/assets/index-Cu2ys-2Y.js"></script>
+</head>
+<body>
+
+  <!-- LOGIN (first screen) -->
+  <div id="login">
+    <div class="lg1">TONE<b>FALL</b></div>
+    <div class="lgsub">AUDIOTOOL EDITION · BUILD 0.9.5 · SNAD INDUSTRIES</div>
+    <button id="loginBtn">Login with Audiotool</button>
+  </div>
+
+  <!-- APP (after login) -->
+  <div id="appwrap" hidden>
+    <div id="game">
+      <canvas id="bloom" class="bg-morph" aria-hidden="true"></canvas>
+      <div id="topToggles">
+        <button id="gameToggle">GAME · COLOR</button>
+        <button id="bgToggle">BG · MORPH</button>
+      </div>
+      <div class="wrap">
+        <div class="side">
+          <div class="brand">
+            <div class="brandchip">
+              <div class="logoRow">
+                <svg class="wave" viewBox="0 0 40 24" aria-hidden="true">
+                  <polyline points="1,12 6,12 8,4 12,20 16,7 20,17 24,12 29,12 31,5 35,12 39,12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="logoTxt"><div class="t1">TONE</div><div class="t2">FALL</div></div>
+              </div>
+              <div class="sub">BY SNAD INDUSTRIES</div>
+            </div>
+          </div>
+          <div class="stat"><div class="k">Score</div><div class="v" id="score">0</div></div>
+          <div class="stat"><div class="k">Lines</div><div class="v" id="lines">0</div></div>
+          <div class="stat"><div class="k">Level</div><div class="v" id="level">1</div></div>
+          <div class="next-wrap"><div class="k">Next</div><canvas id="next" width="120" height="120"></canvas></div>
+          <div class="hint">
+            <b>← →</b> move<br><b>↑</b> rotate<br><b>↓</b> soft drop<br><b>space</b> hard drop<br><b>p</b> pause<br>
+            <b>export</b> = freeze loop → <b>send</b><br><b>1–8</b> chord
+          </div>
+        </div>
+
+        <div class="stage">
+          <div class="boardhead">
+            <span id="jamflash"></span>
+            <span id="holdbadge">■ FROZEN</span>
+            <span class="topbar">
+              <button class="icbtn" id="bHoldTop">■ export</button>
+              <button class="icbtn on" id="mute">♪ sound</button>
+              <button class="icbtn" id="pause">⏸ pause</button>
+            </span>
+          </div>
+          <div class="ports"><i></i><i></i><span>note · out</span></div>
+          <div class="boardrow"><canvas id="board"></canvas></div>
+          <div class="padrow">
+            <button class="fxbtn" data-k="q" title="long delay">
+              <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.6" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor" opacity=".55"/><circle cx="18.5" cy="12" r="1.5" fill="currentColor" opacity=".3"/></svg>
+              <span>long delay</span><i>Q</i>
+            </button>
+            <button class="fxbtn" data-k="e" title="wash">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12 C6 5,8 5,12 12 S18 19,22 12" stroke-linecap="round"/></svg>
+              <span>wash</span><i>E</i>
+            </button>
+            <button class="fxbtn" data-k="y" title="tape stop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="4" width="9" height="9" rx="1.2" fill="currentColor"/><path d="M18.5 5 V15 M18.5 15 L15.5 12 M18.5 15 L21.5 12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>tape stop</span><i>Y</i>
+            </button>
+            <button class="fxbtn" data-k="f" title="transpose">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 3 V21 M8 3 L5 6 M8 3 L11 6 M16 21 V3 M16 21 L13 18 M16 21 L19 18" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>transpose</span><i>F</i>
+            </button>
+            <button class="fxbtn" data-k="v" title="chord stab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7 H20 M4 12 H20 M4 17 H20" stroke-linecap="round"/></svg>
+              <span>chord stab</span><i>V</i>
+            </button>
+          </div>
+
+          <div class="overlay" id="startOv">
+            <h2>tonefall</h2>
+            <p>a 16×16 grid like the original. a moving playhead turns your stack into music — always in key. clearing rows adds a chord. hit EXPORT to freeze a loop, then send it to your Audiotool project.</p>
+            <button class="btn" id="startBtn">start</button>
+          </div>
+          <div class="overlay hidden" id="pauseOv"><h2>pause</h2><button class="btn" id="resumeBtn">resume</button></div>
+          <div class="overlay hidden" id="overOv">
+            <h2>game over</h2>
+            <div><div class="k" style="font-size:10px;letter-spacing:3px;color:var(--dim)">Score</div><div class="big" id="finalScore">0</div></div>
+            <button class="btn" id="againBtn">play again</button>
+          </div>
+          <div id="kbwrap" style="visibility:hidden">
+            <div class="kb" id="kb"></div>
+            <div class="kblabel" id="kblabel">custom chord</div>
+          </div>
+        </div>
+
+        <div class="side side-right">
+          <div class="modeToggle" id="modeToggle">
+            <button class="seg active" data-m="presets">Presets</button>
+            <button class="seg" data-m="own">Custom</button>
+          </div>
+          <div class="selgrid">
+            <div class="mood" id="chordSel"><div class="k">Chord</div><div class="moodbox"><button class="chev" id="moodPrev">◀</button><div class="moodtxt"><div class="mn" id="moodName">Minor</div><div class="md" id="moodDesc">dark · dub</div></div><button class="chev" id="moodNext">▶</button></div></div>
+            <div class="mood" id="keySel"><div class="k">Key</div><div class="moodbox"><button class="chev" id="keyPrev">◀</button><div class="moodtxt"><div class="mn" id="keyName">D</div><div class="md">root</div></div><button class="chev" id="keyNext">▶</button></div></div>
+            <div class="mood" id="octSel"><div class="k">Octave</div><div class="moodbox"><button class="chev" id="octPrev">◀</button><div class="moodtxt"><div class="mn" id="octName">MID</div><div class="md" id="octDesc">middle register</div></div><button class="chev" id="octNext">▶</button></div></div>
+            <div class="mood" id="speedSel"><div class="k">Speed</div><div class="moodbox"><button class="chev" id="speedPrev">◀</button><div class="moodtxt"><div class="mn" id="speedName">CHILL</div><div class="md" id="speedDesc">relaxed · default</div></div><button class="chev" id="speedNext">▶</button></div></div>
+            <div class="mood" id="voiceSel"><div class="k">Voice</div><div class="moodbox"><button class="chev" id="voicePrev">◀</button><div class="moodtxt"><div class="mn" id="voiceName">SINE</div><div class="md" id="voiceDesc">pure · original</div></div><button class="chev" id="voiceNext">▶</button></div></div>
+          </div>
+          <div class="fx">
+            <div class="k">FX</div>
+            <div class="pad" id="pad"><span class="ax ax-y">reverb ↑</span><span class="ax ax-x">delay →</span><div class="dot" id="dot"></div></div>
+            <div class="fxhint">drag · or <b>A/Z</b> reverb · <b>S/X</b> delay · <b>D/C</b> delay time</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="touch">
+        <button id="bL">◀</button><button id="bRot">⟳</button><button id="bDown">▼</button><button id="bR">▶</button>
+        <button class="drop" id="bDrop">DROP</button><button class="drop" id="bHold">EXPORT</button>
+      </div>
+      <div class="footer"><span><i></i>SNAD INDUSTRIES</span><span class="r">tonefall · audiotool edition · build 0.9.5</span></div>
+
+      <!-- SEND MODAL (opens on Hold) -->
+      <div id="sendModal" class="modal hidden">
+        <div class="modalbox">
+          <button id="modalClose" class="mclose" aria-label="close">✕</button>
+          <div class="mtitle">LOOP FROZEN</div>
+          <div class="msub">send this loop to your Audiotool project</div>
+
+          <div class="msec">
+            <div class="mlbl">0 · connect your project</div>
+            <div class="connectrow">
+              <input id="projectUrl" type="text" placeholder="paste project link: https://…audiotool.com/studio?project=…">
+              <button id="connectBtn">connect</button>
+            </div>
+            <div id="atstatus">not connected</div>
+          </div>
+
+          <div class="msec">
+            <div class="mlbl">1 · pick the synth you placed (for MIDI)</div>
+            <div class="synthbtns" id="synthbtns">
+              <button class="synth on" data-s="tonematrix">Tonematrix</button>
+              <button class="synth" data-s="pulverisateur">Pulverisateur</button>
+              <button class="synth" data-s="heisenberg">Heisenberg</button>
+            </div>
+          </div>
+
+          <div class="msec">
+            <div class="mlbl">2 · send</div>
+            <div class="sendrow">
+              <button class="sbtn" id="atMidi">send as MIDI</button>
+              <button class="sbtn" id="atAudio">send as AUDIO</button>
+            </div>
+            <button class="sbtn alt" id="exportBtn">⤓ export .wav</button>
+            <div id="exportResult" hidden></div>
+            <div id="atsendstatus"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tip" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+</body>
+</html>
