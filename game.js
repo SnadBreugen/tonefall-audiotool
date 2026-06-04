@@ -25,7 +25,7 @@ export function initGame() {
   const bloom = document.getElementById("bloom");
   const bctx = bloom.getContext("2d");
   bloom.width = 240; bloom.height = 240;
-  let mono = false;
+  let mono = true;
   let CELL = 38, DPR = 1;
 
   function fit(){
@@ -455,17 +455,28 @@ export function initGame() {
     if(i>=0 && i<cur.m.length && j>=0 && j<cur.m[i].length && cur.m[i][j]) return COLORS[cur.key];
     return null;
   }
+  // ── anti-mud thinning ──────────────────────────────────────────────────────
+  // Density rule: columns with up to 4 simultaneous notes play fully. From
+  // DENSE_FROM (5+) on, only every SECOND filled cell plays, counted from the
+  // bottom so the bass note is always included.
+  const DENSE_FROM = 5;
+  function playableRows(filled){          // filled = ascending row indices
+    if(filled.length < DENSE_FROM) return filled;
+    const out=[];
+    for(let i=filled.length-1; i>=0; i-=2) out.push(filled[i]);
+    return out;
+  }
+
   function step(){
-    let count=0;
-    for(let y=0;y<ROWS;y++){ if(grid[y][playCol]||pieceCellColor(playCol,y)) count++; }
-    const vScale = count ? Math.pow(count,-0.32) : 1;
-    for(let y=0;y<ROWS;y++){
-      if(grid[y][playCol] || pieceCellColor(playCol,y)){
-        const ni = ROWS-1-y;
-        const vel = 0.62 * vScale * (0.82 + 0.18*(ni/(ROWS-1)));
-        note(FREQS[ni], vel, AC?AC.currentTime:0);
-        ripples.push({x:playCol, y, r:0, a:1});
-      }
+    const filled=[];
+    for(let y=0;y<ROWS;y++){ if(grid[y][playCol]||pieceCellColor(playCol,y)) filled.push(y); }
+    const rows = playableRows(filled);
+    const vScale = rows.length ? Math.pow(rows.length,-0.32) : 1;
+    for(const y of rows){
+      const ni = ROWS-1-y;
+      const vel = 0.62 * vScale * (0.82 + 0.18*(ni/(ROWS-1)));
+      note(FREQS[ni], vel, AC?AC.currentTime:0);
+      ripples.push({x:playCol, y, r:0, a:1});
     }
     markCol = playCol;
     playCol = (playCol+1)%COLS;
@@ -678,14 +689,15 @@ export function initGame() {
     const occ=[]; for(let y=0;y<ROWS;y++){ occ.push([]); for(let x=0;x<COLS;x++) occ[y][x]= !!(grid[y][x]||pieceCellColor(x,y)); }
     for(let lp=0; lp<LOOPS; lp++){
       for(let c=0;c<COLS;c++){
-        let count=0; for(let y=0;y<ROWS;y++) if(occ[y][c]) count++;
-        const vScale = count ? Math.pow(count,-0.32) : 1;
+        const filled=[]; for(let y=0;y<ROWS;y++) if(occ[y][c]) filled.push(y);
+        const rows = playableRows(filled);
+        const vScale = rows.length ? Math.pow(rows.length,-0.32) : 1;
         const t = pad + (lp*COLS + c)*stepSec;
-        for(let y=0;y<ROWS;y++){ if(occ[y][c]){
+        for(const y of rows){
           const ni=ROWS-1-y;
           const vel=0.62*vScale*(0.82+0.18*(ni/(ROWS-1)));
           synthVoice(octx, B, FREQS[ni], vel, t, thick);
-        }}
+        }
       }
     }
     if(o.fade>0){ const endT = pad + LOOPS*COLS*stepSec; oMaster.gain.setValueAtTime(0.62, Math.max(0,endT-o.fade)); oMaster.gain.linearRampToValueAtTime(0.0001, endT); }
@@ -836,7 +848,7 @@ export function initGame() {
   });
   (function(){
     const BG=[["bg-morph","MORPH"],["bg-original","ORIGINAL"],["bg-pixel","PIXEL"]];
-    let bi=0;
+    let bi = mono ? 1 : 0;
     const bgBtn=document.getElementById("bgToggle");
     const gameBtn=document.getElementById("gameToggle");
     function applyBg(){ bloom.className=BG[bi][0]; if(bgBtn) bgBtn.textContent="BG · "+BG[bi][1]; }
@@ -911,13 +923,12 @@ export function initGame() {
     getLoopNotes: () => {
       const SemiBreve = 15360, stepT = SemiBreve / COLS, out = [];
       for (let c = 0; c < COLS; c++) {
-        let count = 0; for (let y = 0; y < ROWS; y++) if (grid[y][c] || pieceCellColor(c, y)) count++;
-        for (let y = 0; y < ROWS; y++) {
-          if (grid[y][c] || pieceCellColor(c, y)) {
-            const ni = ROWS - 1 - y, f = FREQS[ni];
-            const pitch = Math.round(69 + 12 * Math.log2(f / 440));
-            out.push({ pitch, positionTicks: c * stepT, durationTicks: stepT, velocity: 0.7 });
-          }
+        const filled = [];
+        for (let y = 0; y < ROWS; y++) if (grid[y][c] || pieceCellColor(c, y)) filled.push(y);
+        for (const y of playableRows(filled)) {
+          const ni = ROWS - 1 - y, f = FREQS[ni];
+          const pitch = Math.round(69 + 12 * Math.log2(f / 440));
+          out.push({ pitch, positionTicks: c * stepT, durationTicks: stepT, velocity: 0.7 });
         }
       }
       return out;

@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>TONEFALL — Audiotool Edition</title>
+<title>TONEFALL</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0a'/%3E%3Cg fill='%23ffffff'%3E%3Crect x='3' y='11' width='8' height='8' rx='1.5'/%3E%3Crect x='12' y='11' width='8' height='8' rx='1.5'/%3E%3Crect x='21' y='11' width='8' height='8' rx='1.5'/%3E%3Crect x='12' y='20' width='8' height='8' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -215,22 +216,22 @@
   }
 </style>
 </head>
-<body>
+<body class="mono">
 
   <!-- LOGIN (first screen) -->
   <div id="login">
     <div class="lg1">TONE<b>FALL</b></div>
-    <div class="lgsub">AUDIOTOOL EDITION · BUILD 0.9.5 · SNAD INDUSTRIES</div>
+    <div class="lgsub">AUDIOTOOL EDITION · BUILD 0.9.10 · SNAD INDUSTRIES</div>
     <button id="loginBtn">Login with Audiotool</button>
   </div>
 
   <!-- APP (after login) -->
   <div id="appwrap" hidden>
     <div id="game">
-      <canvas id="bloom" class="bg-morph" aria-hidden="true"></canvas>
+      <canvas id="bloom" class="bg-original" aria-hidden="true"></canvas>
       <div id="topToggles">
-        <button id="gameToggle">GAME · COLOR</button>
-        <button id="bgToggle">BG · MORPH</button>
+        <button id="gameToggle">GAME · MONO</button>
+        <button id="bgToggle">BG · ORIGINAL</button>
       </div>
       <div class="wrap">
         <div class="side">
@@ -331,7 +332,7 @@
         <button id="bL">◀</button><button id="bRot">⟳</button><button id="bDown">▼</button><button id="bR">▶</button>
         <button class="drop" id="bDrop">DROP</button><button class="drop" id="bHold">EXPORT</button>
       </div>
-      <div class="footer"><span><i></i>SNAD INDUSTRIES</span><span class="r">tonefall · audiotool edition · build 0.9.5</span></div>
+      <div class="footer"><span><i></i>SNAD INDUSTRIES</span><span class="r">tonefall · audiotool edition · build 0.9.10</span></div>
 
       <!-- SEND MODAL (opens on Hold) -->
       <div id="sendModal" class="modal hidden">
